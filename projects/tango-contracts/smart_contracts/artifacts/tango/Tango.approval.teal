@@ -1,0 +1,749 @@
+#pragma version 11
+#pragma typetrack false
+
+// algopy.arc4.ARC4Contract.approval_program() -> uint64:
+main:
+    intcblock 1 0 8 2
+    bytecblock "game_counter" "games" 0x151f7c75 "owner"
+    txn ApplicationID
+    bnz main_after_if_else@2
+    // smart_contracts/tango/contract.py:24
+    // self.owner = Txn.sender
+    bytec_3 // "owner"
+    txn Sender
+    app_global_put
+    // smart_contracts/tango/contract.py:25
+    // self.game_counter = UInt64(0)
+    bytec_0 // "game_counter"
+    intc_1 // 0
+    app_global_put
+
+main_after_if_else@2:
+    // smart_contracts/tango/contract.py:14
+    // class Tango(ARC4Contract):
+    txn NumAppArgs
+    bz main___algopy_default_create@17
+    txn OnCompletion
+    !
+    assert // OnCompletion must be NoOp
+    txn ApplicationID
+    assert
+    pushbytess 0x3df3c688 0xe0173e5b 0x9b1d2ec8 0xc5b01bb2 0x4b980463 0x2aa49044 0x3e2ec8e9 0x255a86df // method "create_game()uint64", method "join_game(uint64)string", method "submit_move(uint64,uint64)string", method "get_game(uint64)(address,address,uint64,uint64,uint64,address)", method "get_game_status(uint64)string", method "_determine_winner(uint64)string", method "get_winner(uint64)address", method "transfer_ownership(address)string"
+    txna ApplicationArgs 0
+    match create_game join_game submit_move get_game get_game_status _determine_winner get_winner transfer_ownership
+    err
+
+main___algopy_default_create@17:
+    txn OnCompletion
+    !
+    txn ApplicationID
+    !
+    &&
+    assert // OnCompletion must be NoOp && can only call when creating
+    intc_0 // 1
+    return
+
+
+// smart_contracts.tango.contract.Tango.create_game[routing]() -> void:
+create_game:
+    // smart_contracts/tango/contract.py:31
+    // self.game_counter += 1
+    intc_1 // 0
+    bytec_0 // "game_counter"
+    app_global_get_ex
+    assert // check self.game_counter exists
+    intc_0 // 1
+    +
+    bytec_0 // "game_counter"
+    dig 1
+    app_global_put
+    // smart_contracts/tango/contract.py:41
+    // winner=Account()
+    global ZeroAddress
+    // smart_contracts/tango/contract.py:36
+    // player1=Txn.sender,
+    txn Sender
+    // smart_contracts/tango/contract.py:37
+    // player2=Account(),
+    global ZeroAddress
+    // smart_contracts/tango/contract.py:34-42
+    // # Initialize new game
+    // new_game = Game(
+    //     player1=Txn.sender,
+    //     player2=Account(),
+    //     move1=UInt64(0),  # None
+    //     move2=UInt64(0),  # None
+    //     status=UInt64(0),  # Waiting
+    //     winner=Account()
+    // )
+    concat
+    // smart_contracts/tango/contract.py:38
+    // move1=UInt64(0),  # None
+    intc_1 // 0
+    // smart_contracts/tango/contract.py:34-42
+    // # Initialize new game
+    // new_game = Game(
+    //     player1=Txn.sender,
+    //     player2=Account(),
+    //     move1=UInt64(0),  # None
+    //     move2=UInt64(0),  # None
+    //     status=UInt64(0),  # Waiting
+    //     winner=Account()
+    // )
+    itob
+    swap
+    dig 1
+    concat
+    dig 1
+    concat
+    swap
+    concat
+    swap
+    concat
+    // smart_contracts/tango/contract.py:44-45
+    // # Store game in box storage
+    // self.games[game_id] = new_game.copy()
+    swap
+    itob
+    bytec_1 // "games"
+    dig 1
+    concat
+    uncover 2
+    box_put
+    // smart_contracts/tango/contract.py:28
+    // @abimethod()
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+
+// smart_contracts.tango.contract.Tango.join_game[routing]() -> void:
+join_game:
+    // smart_contracts/tango/contract.py:49
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/tango/contract.py:52
+    // assert game_id <= self.game_counter, "Invalid game ID"
+    intc_1 // 0
+    bytec_0 // "game_counter"
+    app_global_get_ex
+    assert // check self.game_counter exists
+    dig 1
+    >=
+    assert // Invalid game ID
+    // smart_contracts/tango/contract.py:54
+    // game = self.games[game_id].copy()
+    itob
+    bytec_1 // "games"
+    swap
+    concat
+    dup
+    box_get
+    assert // check self.games entry exists
+    // smart_contracts/tango/contract.py:56-57
+    // # Validate game can be joined
+    // assert game.player1 != Account(), "Game does not exist"
+    dup
+    extract 0 32
+    global ZeroAddress
+    !=
+    assert // Game does not exist
+    // smart_contracts/tango/contract.py:58
+    // assert game.player2 == Account(), "Game is full"
+    dup
+    extract 32 32
+    global ZeroAddress
+    ==
+    assert // Game is full
+    // smart_contracts/tango/contract.py:59
+    // assert game.status == UInt64(0), "Game already started"
+    dup
+    pushint 80 // 80
+    extract_uint64
+    !
+    assert // Game already started
+    // smart_contracts/tango/contract.py:61-62
+    // # Add player 2 and update status
+    // game.player2 = Txn.sender
+    txn Sender
+    replace2 32
+    // smart_contracts/tango/contract.py:63
+    // game.status = UInt64(1)  # Ongoing
+    intc_0 // 1
+    itob
+    replace2 80
+    // smart_contracts/tango/contract.py:65-66
+    // # Update game in storage
+    // self.games[game_id] = game.copy()
+    box_put
+    // smart_contracts/tango/contract.py:49
+    // @abimethod()
+    pushbytes 0x151f7c7500195375636365737366756c6c79206a6f696e65642067616d6521
+    log
+    intc_0 // 1
+    return
+
+
+// smart_contracts.tango.contract.Tango.submit_move[routing]() -> void:
+submit_move:
+    intc_1 // 0
+    dup
+    // smart_contracts/tango/contract.py:70
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 2
+    dupn 2
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    dup
+    // smart_contracts/tango/contract.py:73
+    // assert move >= 1 and move <= 3, "Invalid move (use 1=Rock, 2=Paper, 3=Scissors)"
+    bz submit_move_bool_false@4
+    dup
+    pushint 3 // 3
+    <=
+    bz submit_move_bool_false@4
+    intc_0 // 1
+
+submit_move_bool_merge@5:
+    // smart_contracts/tango/contract.py:73
+    // assert move >= 1 and move <= 3, "Invalid move (use 1=Rock, 2=Paper, 3=Scissors)"
+    assert // Invalid move (use 1=Rock, 2=Paper, 3=Scissors)
+    // smart_contracts/tango/contract.py:74
+    // assert game_id <= self.game_counter, "Invalid game ID"
+    intc_1 // 0
+    bytec_0 // "game_counter"
+    app_global_get_ex
+    assert // check self.game_counter exists
+    dig 3
+    dup
+    uncover 2
+    <=
+    assert // Invalid game ID
+    // smart_contracts/tango/contract.py:76
+    // game = self.games[game_id].copy()
+    itob
+    bytec_1 // "games"
+    swap
+    concat
+    dup
+    bury 6
+    box_get
+    swap
+    dup
+    cover 2
+    bury 6
+    assert // check self.games entry exists
+    // smart_contracts/tango/contract.py:78
+    // assert game.status == UInt64(1), "Game is not ongoing"
+    dup
+    pushint 80 // 80
+    extract_uint64
+    intc_0 // 1
+    ==
+    assert // Game is not ongoing
+    // smart_contracts/tango/contract.py:80-81
+    // # Determine which player is submitting
+    // if Txn.sender == game.player1:
+    txn Sender
+    swap
+    extract 0 32
+    ==
+    bz submit_move_else_body@7
+    // smart_contracts/tango/contract.py:82
+    // assert game.move1 == UInt64(0), "Player 1 already submitted move"
+    dig 3
+    dup
+    pushint 64 // 64
+    extract_uint64
+    !
+    assert // Player 1 already submitted move
+    // smart_contracts/tango/contract.py:83
+    // game.move1 = move
+    dig 2
+    replace2 64
+    bury 4
+
+submit_move_after_if_else@11:
+    // smart_contracts/tango/contract.py:90-91
+    // # Update game
+    // self.games[game_id] = game.copy()
+    dig 4
+    dig 4
+    dup
+    cover 2
+    box_put
+    // smart_contracts/tango/contract.py:93-94
+    // # Check if both moves are submitted
+    // if game.move1 != UInt64(0) and game.move2 != UInt64(0):
+    pushint 64 // 64
+    extract_uint64
+    bz submit_move_after_if_else@14
+    dig 3
+    pushint 72 // 72
+    extract_uint64
+    bz submit_move_after_if_else@14
+    // smart_contracts/tango/contract.py:95
+    // return self._determine_winner(game_id)
+    dig 2
+    callsub smart_contracts.tango.contract.Tango._determine_winner
+
+submit_move_after_inlined_smart_contracts.tango.contract.Tango.submit_move@15:
+    // smart_contracts/tango/contract.py:70
+    // @abimethod()
+    dup
+    len
+    itob
+    extract 6 2
+    swap
+    concat
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+submit_move_after_if_else@14:
+    // smart_contracts/tango/contract.py:97
+    // return String("Move submitted! Waiting for opponent...")
+    pushbytes "Move submitted! Waiting for opponent..."
+    // smart_contracts/tango/contract.py:70
+    // @abimethod()
+    b submit_move_after_inlined_smart_contracts.tango.contract.Tango.submit_move@15
+
+submit_move_else_body@7:
+    // smart_contracts/tango/contract.py:84
+    // elif Txn.sender == game.player2:
+    txn Sender
+    dig 4
+    dup
+    cover 2
+    extract 32 32
+    ==
+    assert // You are not a player in this game
+    // smart_contracts/tango/contract.py:85
+    // assert game.move2 == UInt64(0), "Player 2 already submitted move"
+    dup
+    pushint 72 // 72
+    extract_uint64
+    !
+    assert // Player 2 already submitted move
+    // smart_contracts/tango/contract.py:86
+    // game.move2 = move
+    dig 2
+    replace2 72
+    bury 4
+    b submit_move_after_if_else@11
+
+submit_move_bool_false@4:
+    intc_1 // 0
+    b submit_move_bool_merge@5
+
+
+// smart_contracts.tango.contract.Tango.get_game[routing]() -> void:
+get_game:
+    // smart_contracts/tango/contract.py:99
+    // @abimethod(readonly=True)
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/tango/contract.py:102
+    // assert game_id <= self.game_counter, "Invalid game ID"
+    intc_1 // 0
+    bytec_0 // "game_counter"
+    app_global_get_ex
+    assert // check self.game_counter exists
+    dig 1
+    >=
+    assert // Invalid game ID
+    // smart_contracts/tango/contract.py:103
+    // return self.games[game_id].copy()
+    itob
+    bytec_1 // "games"
+    swap
+    concat
+    box_get
+    assert // check self.games entry exists
+    // smart_contracts/tango/contract.py:99
+    // @abimethod(readonly=True)
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+
+// smart_contracts.tango.contract.Tango.get_game_status[routing]() -> void:
+get_game_status:
+    // smart_contracts/tango/contract.py:105
+    // @abimethod(readonly=True)
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/tango/contract.py:108
+    // assert game_id <= self.game_counter, "Invalid game ID"
+    intc_1 // 0
+    bytec_0 // "game_counter"
+    app_global_get_ex
+    assert // check self.game_counter exists
+    dig 1
+    >=
+    assert // Invalid game ID
+    // smart_contracts/tango/contract.py:109
+    // game = self.games[game_id].copy()
+    itob
+    bytec_1 // "games"
+    swap
+    concat
+    box_get
+    swap
+    dup
+    uncover 2
+    assert // check self.games entry exists
+    // smart_contracts/tango/contract.py:111
+    // if game.status == UInt64(0):
+    pushint 80 // 80
+    extract_uint64
+    dup
+    bnz get_game_status_else_body@3
+    // smart_contracts/tango/contract.py:112
+    // return String("Waiting for player 2")
+    pushbytes "Waiting for player 2"
+
+get_game_status_after_inlined_smart_contracts.tango.contract.Tango.get_game_status@8:
+    // smart_contracts/tango/contract.py:105
+    // @abimethod(readonly=True)
+    dup
+    len
+    itob
+    extract 6 2
+    swap
+    concat
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+get_game_status_else_body@3:
+    // smart_contracts/tango/contract.py:113
+    // elif game.status == UInt64(1):
+    dup
+    intc_0 // 1
+    ==
+    bz get_game_status_else_body@5
+    // smart_contracts/tango/contract.py:114
+    // return String("Game ongoing")
+    pushbytes "Game ongoing"
+    // smart_contracts/tango/contract.py:105
+    // @abimethod(readonly=True)
+    b get_game_status_after_inlined_smart_contracts.tango.contract.Tango.get_game_status@8
+
+get_game_status_else_body@5:
+    // smart_contracts/tango/contract.py:116
+    // if game.winner == Account():
+    dig 1
+    extract 88 32
+    global ZeroAddress
+    ==
+    bz get_game_status_else_body@7
+    // smart_contracts/tango/contract.py:117
+    // return String("Game finished - Draw!")
+    pushbytes "Game finished - Draw!"
+    // smart_contracts/tango/contract.py:105
+    // @abimethod(readonly=True)
+    b get_game_status_after_inlined_smart_contracts.tango.contract.Tango.get_game_status@8
+
+get_game_status_else_body@7:
+    // smart_contracts/tango/contract.py:119
+    // return String("Game finished - Winner declared!")
+    pushbytes "Game finished - Winner declared!"
+    // smart_contracts/tango/contract.py:105
+    // @abimethod(readonly=True)
+    b get_game_status_after_inlined_smart_contracts.tango.contract.Tango.get_game_status@8
+
+
+// smart_contracts.tango.contract.Tango._determine_winner[routing]() -> void:
+_determine_winner:
+    // smart_contracts/tango/contract.py:121
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    callsub smart_contracts.tango.contract.Tango._determine_winner
+    dup
+    len
+    itob
+    extract 6 2
+    swap
+    concat
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+
+// smart_contracts.tango.contract.Tango.get_winner[routing]() -> void:
+get_winner:
+    // smart_contracts/tango/contract.py:155
+    // @abimethod(readonly=True)
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/tango/contract.py:158
+    // assert game_id <= self.game_counter, "Invalid game ID"
+    intc_1 // 0
+    bytec_0 // "game_counter"
+    app_global_get_ex
+    assert // check self.game_counter exists
+    dig 1
+    >=
+    assert // Invalid game ID
+    // smart_contracts/tango/contract.py:159
+    // game = self.games[game_id].copy()
+    itob
+    bytec_1 // "games"
+    swap
+    concat
+    box_get
+    assert // check self.games entry exists
+    // smart_contracts/tango/contract.py:160
+    // assert game.status == UInt64(2), "Game not finished yet"
+    dup
+    pushint 80 // 80
+    extract_uint64
+    intc_3 // 2
+    ==
+    assert // Game not finished yet
+    // smart_contracts/tango/contract.py:161
+    // return game.winner
+    extract 88 32
+    // smart_contracts/tango/contract.py:155
+    // @abimethod(readonly=True)
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+
+// smart_contracts.tango.contract.Tango.transfer_ownership[routing]() -> void:
+transfer_ownership:
+    // smart_contracts/tango/contract.py:163
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    pushint 32 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    // smart_contracts/tango/contract.py:166
+    // assert Txn.sender == self.owner, "Only owner can transfer ownership"
+    txn Sender
+    intc_1 // 0
+    bytec_3 // "owner"
+    app_global_get_ex
+    assert // check self.owner exists
+    ==
+    assert // Only owner can transfer ownership
+    // smart_contracts/tango/contract.py:167
+    // assert new_owner != Account(), "Invalid new owner address"
+    dup
+    global ZeroAddress
+    !=
+    assert // Invalid new owner address
+    // smart_contracts/tango/contract.py:169
+    // self.owner = new_owner
+    bytec_3 // "owner"
+    swap
+    app_global_put
+    // smart_contracts/tango/contract.py:163
+    // @abimethod()
+    pushbytes 0x151f7c7500234f776e657273686970207472616e73666572726564207375636365737366756c6c7921
+    log
+    intc_0 // 1
+    return
+
+
+// smart_contracts.tango.contract.Tango._determine_winner(game_id: uint64) -> bytes:
+smart_contracts.tango.contract.Tango._determine_winner:
+    // smart_contracts/tango/contract.py:121-122
+    // @abimethod()
+    // def _determine_winner(self, game_id: UInt64) -> String:
+    proto 1 1
+    // smart_contracts/tango/contract.py:124
+    // game = self.games[game_id].copy()
+    frame_dig -1
+    itob
+    bytec_1 // "games"
+    swap
+    concat
+    dup
+    box_get
+    swap
+    dup
+    uncover 2
+    assert // check self.games entry exists
+    // smart_contracts/tango/contract.py:126-127
+    // # Check for draw
+    // if game.move1 == game.move2:
+    dup
+    pushint 64 // 64
+    extract_uint64
+    dup
+    uncover 2
+    pushint 72 // 72
+    extract_uint64
+    dup
+    cover 2
+    ==
+    bz smart_contracts.tango.contract.Tango._determine_winner_after_if_else@2
+    // smart_contracts/tango/contract.py:128
+    // game.winner = Account()
+    frame_dig 1
+    global ZeroAddress
+    replace2 88
+    // smart_contracts/tango/contract.py:129
+    // game.status = UInt64(2)  # Finished
+    intc_3 // 2
+    itob
+    replace2 80
+    // smart_contracts/tango/contract.py:130
+    // self.games[game_id] = game.copy()
+    frame_dig 0
+    swap
+    box_put
+    // smart_contracts/tango/contract.py:131
+    // return String("Game finished - It's a draw!")
+    pushbytes "Game finished - It's a draw!"
+    frame_bury 0
+    retsub
+
+smart_contracts.tango.contract.Tango._determine_winner_after_if_else@2:
+    // smart_contracts/tango/contract.py:138
+    // (game.move1 == UInt64(1) and game.move2 == UInt64(3)) or
+    frame_dig 2
+    intc_0 // 1
+    ==
+    bz smart_contracts.tango.contract.Tango._determine_winner_or_contd@4
+    frame_dig 3
+    pushint 3 // 3
+    ==
+    bnz smart_contracts.tango.contract.Tango._determine_winner_bool_true@8
+
+smart_contracts.tango.contract.Tango._determine_winner_or_contd@4:
+    // smart_contracts/tango/contract.py:139
+    // (game.move1 == UInt64(2) and game.move2 == UInt64(1)) or
+    frame_dig 2
+    intc_3 // 2
+    ==
+    bz smart_contracts.tango.contract.Tango._determine_winner_or_contd@6
+    frame_dig 3
+    intc_0 // 1
+    ==
+    bnz smart_contracts.tango.contract.Tango._determine_winner_bool_true@8
+
+smart_contracts.tango.contract.Tango._determine_winner_or_contd@6:
+    // smart_contracts/tango/contract.py:140
+    // (game.move1 == UInt64(3) and game.move2 == UInt64(2))
+    frame_dig 2
+    pushint 3 // 3
+    ==
+    bz smart_contracts.tango.contract.Tango._determine_winner_bool_false@9
+    frame_dig 3
+    intc_3 // 2
+    ==
+    bz smart_contracts.tango.contract.Tango._determine_winner_bool_false@9
+
+smart_contracts.tango.contract.Tango._determine_winner_bool_true@8:
+    intc_0 // 1
+
+smart_contracts.tango.contract.Tango._determine_winner_bool_merge@10:
+    // smart_contracts/tango/contract.py:143
+    // if player1_wins:
+    bz smart_contracts.tango.contract.Tango._determine_winner_else_body@12
+    // smart_contracts/tango/contract.py:144
+    // game.winner = game.player1
+    frame_dig 1
+    dup
+    extract 0 32
+    replace2 88
+    frame_bury 1
+    // smart_contracts/tango/contract.py:145
+    // result = String("Game finished - Player 1 wins!")
+    pushbytes "Game finished - Player 1 wins!"
+
+smart_contracts.tango.contract.Tango._determine_winner_after_if_else@13:
+    // smart_contracts/tango/contract.py:150
+    // game.status = UInt64(2)  # Finished
+    intc_3 // 2
+    itob
+    frame_dig 1
+    swap
+    replace2 80
+    // smart_contracts/tango/contract.py:151
+    // self.games[game_id] = game.copy()
+    frame_dig 0
+    swap
+    box_put
+    // smart_contracts/tango/contract.py:153
+    // return result
+    frame_bury 0
+    retsub
+
+smart_contracts.tango.contract.Tango._determine_winner_else_body@12:
+    // smart_contracts/tango/contract.py:147
+    // game.winner = game.player2
+    frame_dig 1
+    dup
+    extract 32 32
+    replace2 88
+    frame_bury 1
+    // smart_contracts/tango/contract.py:148
+    // result = String("Game finished - Player 2 wins!")
+    pushbytes "Game finished - Player 2 wins!"
+    b smart_contracts.tango.contract.Tango._determine_winner_after_if_else@13
+
+smart_contracts.tango.contract.Tango._determine_winner_bool_false@9:
+    intc_1 // 0
+    b smart_contracts.tango.contract.Tango._determine_winner_bool_merge@10
