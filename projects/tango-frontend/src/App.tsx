@@ -1,11 +1,16 @@
-import { SupportedWallet, WalletId, WalletManager, WalletProvider } from '@txnlab/use-wallet-react'
-import { SnackbarProvider } from 'notistack'
-import Home from './Home'
-import { getAlgodConfigFromViteEnvironment, getKmdConfigFromViteEnvironment } from './utils/network/getAlgoClientConfigs'
+import { SupportedWallet, WalletId, WalletManager, WalletProvider } from '@txnlab/use-wallet-react';
+import { SnackbarProvider } from 'notistack';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
-let supportedWallets: SupportedWallet[]
+import Home from './Home';
+import RoomPage from './room/[id]/page';
+import { getAlgodConfigFromViteEnvironment, getKmdConfigFromViteEnvironment } from './utils/network/getAlgoClientConfigs';
+
+// Setup supported wallets
+let supportedWallets: SupportedWallet[];
+
 if (import.meta.env.VITE_ALGOD_NETWORK === 'localnet') {
-  const kmdConfig = getKmdConfigFromViteEnvironment()
+  const kmdConfig = getKmdConfigFromViteEnvironment();
   supportedWallets = [
     {
       id: WalletId.KMD,
@@ -15,19 +20,18 @@ if (import.meta.env.VITE_ALGOD_NETWORK === 'localnet') {
         port: String(kmdConfig.port),
       },
     },
-  ]
+  ];
 } else {
   supportedWallets = [
     { id: WalletId.DEFLY },
     { id: WalletId.PERA },
     { id: WalletId.EXODUS },
-    // If you are interested in WalletConnect v2 provider
-    // refer to https://github.com/TxnLab/use-wallet for detailed integration instructions
-  ]
+    // Bisa tambah WalletConnect v2 kalau mau
+  ];
 }
 
 export default function App() {
-  const algodConfig = getAlgodConfigFromViteEnvironment()
+  const algodConfig = getAlgodConfigFromViteEnvironment();
 
   const walletManager = new WalletManager({
     wallets: supportedWallets,
@@ -44,13 +48,20 @@ export default function App() {
     options: {
       resetNetwork: true,
     },
-  })
+  });
 
   return (
     <SnackbarProvider maxSnack={3}>
       <WalletProvider manager={walletManager}>
-        <Home />
+        {/* ✅ Router Wrapper */}
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            {/* Dynamic route for game room */}
+            <Route path="/room/:id" element={<RoomPage />} />
+          </Routes>
+        </BrowserRouter>
       </WalletProvider>
     </SnackbarProvider>
-  )
+  );
 }
